@@ -1,6 +1,6 @@
 // Offline support: same-origin files are fetched from the network first (so new words and
 // app updates arrive immediately) and fall back to the last cached copy when offline.
-const CACHE = "slovar-v2";
+const CACHE = "slovar-v3";
 const SHELL = ["./", "./index.html", "./app.js", "./style.css", "./words.json", "./manifest.webmanifest",
   "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
@@ -21,8 +21,8 @@ self.addEventListener("fetch", event => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) {
-    // Fonts: cache after first load so the app keeps its look offline.
-    if (url.hostname.endsWith("fonts.googleapis.com") || url.hostname.endsWith("fonts.gstatic.com")) {
+    // Fonts and icons: cache after first load so the app keeps its look offline.
+    if (url.hostname.endsWith("fonts.googleapis.com") || url.hostname.endsWith("fonts.gstatic.com") || url.hostname === "cdn.jsdelivr.net") {
       event.respondWith(caches.open(CACHE).then(c => c.match(req).then(hit => hit || fetch(req).then(res => {
         c.put(req, res.clone());
         return res;

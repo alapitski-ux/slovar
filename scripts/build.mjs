@@ -4,7 +4,7 @@ import { build } from "esbuild";
 import { readFileSync, copyFileSync } from "node:fs";
 
 const header = 'import React from "react";\nimport { createRoot } from "react-dom/client";\nconst ReactDOM = { createRoot };\n';
-const code = header + readFileSync("src/components.jsx", "utf8") + "\n" + readFileSync("src/app.jsx", "utf8");
+const code = header + readFileSync("src/app.jsx", "utf8");
 
 await build({
   stdin: { contents: code, loader: "jsx", resolveDir: process.cwd(), sourcefile: "app.jsx" },
