@@ -1,6 +1,6 @@
 // Offline support: same-origin files are fetched from the network first (so new words and
 // app updates arrive immediately) and fall back to the last cached copy when offline.
-const CACHE = "slovar-v1";
+const CACHE = "slovar-v2";
 const SHELL = ["./", "./index.html", "./app.js", "./style.css", "./words.json", "./manifest.webmanifest",
   "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
@@ -31,8 +31,10 @@ self.addEventListener("fetch", event => {
     return;
   }
   if (url.pathname.includes("/restore/")) return;
+  // "no-cache" revalidates with the server every time, so a new version shows up on the next open
+  // instead of after the browser's 10-minute HTTP cache expires.
   event.respondWith(
-    fetch(req).then(res => {
+    fetch(req.url, { cache: "no-cache", credentials: "same-origin" }).then(res => {
       if (res.ok) {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(req, copy));
