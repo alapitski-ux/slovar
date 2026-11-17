@@ -7,8 +7,9 @@
   #restore=<code> imports restore/<code>.json into progress once.
 */
 
-function Backup({ progress, custom, hidden, onRestore, notify }) {
+function Backup({ progress, custom, hidden, onRestore, onCode, notify }) {
   const fileRef = useRef(null);
+  const [code, setCode] = useState("");
   const save = () => {
     const data = { app: "slovar", version: 1, savedAt: new Date().toISOString(), progress, custom, hidden };
     const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
@@ -47,6 +48,11 @@ function Backup({ progress, custom, hidden, onRestore, notify }) {
         <button type="button" className="btn" onClick={() => fileRef.current && fileRef.current.click()}>Загрузить копию</button>
         <input id="backup-file" ref={fileRef} type="file" accept="application/json,.json" hidden onChange={load} />
       </div>
+      <form className="typeform" onSubmit={e => { e.preventDefault(); const c = code.trim(); if (c) { onCode(c); setCode(""); } }}>
+        <input id="restore-code" value={code} onChange={e => setCode(e.target.value)} placeholder="Код переноса прогресса"
+          autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-label="Код переноса прогресса" style={{ fontSize: 15 }} />
+        <button type="submit" className="btn">Перенести</button>
+      </form>
     </section>
   );
 }
@@ -89,21 +95,25 @@ function App() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    const m = location.hash.match(/^#restore=([a-z0-9]{8,64})$/i);
-    if (!m) return;
-    fetch("restore/" + m[1] + ".json", { cache: "no-store" })
+  const restoreFromCode = code => {
+    if (!/^[a-z0-9]{8,64}$/i.test(code)) { notify("Код не похож на код переноса."); return Promise.resolve(); }
+    return fetch("restore/" + code + ".json", { cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(data => {
         setProgress(p => ({ ...p, ...data }));
         const n = Object.keys(data).length;
         notify("Прогресс перенесён: " + n + " " + plural(n, "слово", "слова", "слов"));
       })
-      .catch(() => notify("Не получилось загрузить прогресс по этой ссылке."))
-      .finally(() => {
-        history.replaceState(null, "", location.pathname + location.search + "#train");
-        setRoute("train");
-      });
+      .catch(() => notify("Не получилось перенести прогресс: проверь код и интернет."));
+  };
+
+  useEffect(() => {
+    const m = location.hash.match(/^#restore=([a-z0-9]{8,64})$/i);
+    if (!m) return;
+    restoreFromCode(m[1]).finally(() => {
+      history.replaceState(null, "", location.pathname + location.search + "#train");
+      setRoute("train");
+    });
   }, []);
 
   const sharedIds = useMemo(() => new Set(shared.map(w => w.id)), [shared]);
@@ -177,7 +187,7 @@ function App() {
       {status !== "loading" && page === "words" && (
         <>
           <Words words={view} db={db} notify={notify} canEditWords={true} onReset={resetStat} localMode={false} />
-          <Backup progress={progress} custom={custom} hidden={hidden} onRestore={restoreBackup} notify={notify} />
+          <Backup progress={progress} custom={custom} hidden={hidden} onRestore={restoreBackup} onCode={restoreFromCode} notify={notify} />
         </>
       )}
       {status !== "loading" && page === "add" && <Add words={words} db={db} notify={notify} />}
