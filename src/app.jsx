@@ -127,6 +127,8 @@ function listInfo(src) {
   const m = /^EVU (\d+) · (.+)$/.exec(src || "");
   if (m) return { title: m[2], meta: "Юнит " + (+m[1]), icon: UNIT_ICONS[+m[1]] || "book" };
   if (/глагол/i.test(src)) return { title: src, meta: "Подборка", icon: "bolt" };
+  const t = /^Текст · (.+)$/.exec(src || "");
+  if (t) return { title: t[1], meta: "Из текста", icon: /сказк/i.test(t[1]) ? "wand" : "file-text" };
   return { title: src || "Без списка", meta: "Мои слова", icon: "book" };
 }
 const sourcesOf = words => [...new Set(words.map(w => w.src || ""))].sort((a, b) => a.localeCompare(b, "ru"));
