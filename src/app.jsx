@@ -193,10 +193,16 @@ function buildQueue(kind, items, progress, settings, newLeft) {
     q = due.slice(0, SESSION);
     q = q.concat(fresh.slice(0, Math.max(0, Math.min(newLeft, SESSION - q.length))));
   } else if (kind === "list") {
-    const notDue = practiced.filter(i => dueAt(i.st) > now);
-    const weak = notDue.filter(i => +levelOf(i.st) <= 2).sort(byWeak);
-    const strong = notDue.filter(i => +levelOf(i.st) > 2).sort((a, b) => a.st.last - b.st.last);
-    q = [...due, ...weak, ...fresh, ...strong].slice(0, SESSION);
+    // The whole list, one card per word. With both directions on, each word gets the direction
+    // it needs more: an unseen word starts EN → RU, otherwise the weaker (or due) direction.
+    const byWord = new Map();
+    for (const i of items) { if (!byWord.has(i.id)) byWord.set(i.id, []); byWord.get(i.id).push(i); }
+    const rank = i => !(i.st && i.st.n) ? (i.dir === "er" ? 2 : 3) : (dueAt(i.st) <= now ? 0 : 1);
+    q = [...byWord.values()].map(list => list.slice().sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return (a.st && b.st) ? byWeak(a, b) : 0;
+    })[0]);
   } else {
     q = practiced.slice().sort(byWeak).slice(0, SESSION);
     if (!q.length) q = fresh.slice(0, SESSION);
@@ -307,7 +313,7 @@ function ListDetail({ list, progress, onBack, onTrain, onWord }) {
       <div className="card-list">
         {sorted.map(w => <WordRow key={w.id} w={w} p={progress[w.id]} onClick={() => onWord(w.id)} />)}
       </div>
-      <button type="button" className="cta" onClick={onTrain}><Icon n="player-play" />Тренировать список</button>
+      <button type="button" className="cta" onClick={onTrain}><Icon n="player-play" />Весь список · {cards_(list.words.length)}</button>
     </>
   );
 }
@@ -789,7 +795,7 @@ function Summary({ summary, canMore, onMore, onHome }) {
           )}
         </div>
         <div className="sum-actions">
-          {canMore && <button type="button" className="cta plain" onClick={onMore}><Icon n="player-play" />Ещё {SESSION}</button>}
+          {canMore && <button type="button" className="cta plain" onClick={onMore}><Icon n="player-play" />{summary.kind === "list" ? "Пройти список ещё раз" : "Ещё " + SESSION}</button>}
           <button type="button" className="btn" onClick={onHome}>На главную</button>
         </div>
       </div>
